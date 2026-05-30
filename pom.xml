@@ -6,7 +6,7 @@
 
     <groupId>pt.paradigmshift.babel</groupId>
     <artifactId>eager-gossip-broadcast</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
     <name>Babel Eager-Push Gossip Broadcast</name>
     <description>
         Reliable eager-push gossip broadcast for Babel applications. Each
@@ -50,8 +50,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <babel.core.version>1.0.0</babel.core.version>
-        <babel.protocols.common.version>1.0.0</babel.protocols.common.version>
+        <babel.core.version>1.0.1</babel.core.version>
+        <babel.protocols.common.version>1.1.0</babel.protocols.common.version>
     </properties>
 
     <build>
