@@ -29,7 +29,7 @@ propagated to every reachable peer.
 Eager-push gives low latency and bounded send overhead per node
 (`fanout × messages-per-second`) at the cost of some redundancy on edges
 that receive the same message from multiple paths. The delivery-window cache
-absorbs that redundancy. Pair with `babel-antientropy` when stronger
+absorbs that redundancy. Pair with `broadcast-antientropy` when stronger
 eventual-delivery guarantees are needed.
 
 ## Protocol & event identifiers
@@ -56,7 +56,7 @@ gateway's other protocols (1000/1300/1400/1500/1600/1700/1800/1900/2000–2300).
 | `EagerPushGossipBroadcast.Channel.Port`    | from `myself` | TCP bind port. |
 | `EagerPushGossipBroadcast.Fanout`          | `4` | Number of random peers each broadcast is forwarded to. |
 | `EagerPushGossipBroadcast.DeliveredTimeout`| `600000` ms | How long a delivered message ID is remembered in the dedup cache. |
-| `EagerPushGossipBroadcast.SupportAntiEntropy` | `false` | When `true`, fires `IdentifiableMessageNotification` on delivery (consumed by `babel-antientropy`) and handles `MissingIdentifiableMessageRequest` (recovers messages anti-entropy detects as missing on a peer). |
+| `EagerPushGossipBroadcast.SupportAntiEntropy` | `false` | When `true`, fires `IdentifiableMessageNotification` on delivery (consumed by `broadcast-antientropy`) and handles `MissingIdentifiableMessageRequest` (recovers messages anti-entropy detects as missing on a peer). |
 | `EagerPushGossipBroadcast.LocalSupport`    | `false` | When `true`, neighbour port is computed as `peer.port + 1` instead of `this.networkPort` — used in local single-host test deployments where every node is on the same loopback IP. |
 
 ## How application protocols plug in

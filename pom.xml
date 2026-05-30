@@ -14,7 +14,7 @@
         fanout of connected neighbours; receivers re-broadcast novel messages
         with the same fanout. Deduplicates by message identifier with a sliding
         delivery-window cache. Pairs with a membership protocol (HyParView,
-        static peer list) and optionally with babel-antientropy for state
+        static peer list) and optionally with broadcast-antientropy for state
         reconciliation.
     </description>
     <url>https://www.paradigmshift.pt</url>
