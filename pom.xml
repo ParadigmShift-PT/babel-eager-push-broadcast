@@ -6,7 +6,7 @@
 
     <groupId>pt.paradigmshift.babel</groupId>
     <artifactId>eager-gossip-broadcast</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
     <name>Babel Eager-Push Gossip Broadcast</name>
     <description>
         Reliable eager-push gossip broadcast for Babel applications. Each

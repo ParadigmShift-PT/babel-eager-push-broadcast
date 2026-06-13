@@ -5,7 +5,7 @@ Provided and evolved independently of the original work.
 
 **Group ID:** `pt.paradigmshift.babel`
 **Artifact ID:** `eager-gossip-broadcast`
-**Current version:** `0.1.0`
+**Current version:** `0.3.0`
 **Tested with:** `pt.paradigmshift.babel:babel-core` (Babel-Swarm core fork) and
 `pt.paradigmshift.babel:babel-protocols-common` (shared dissemination / membership API surface).
 **Source / target:** Java 17.
@@ -52,12 +52,52 @@ gateway's other protocols (1000/1300/1400/1500/1600/1700/1800/1900/2000–2300).
 
 | Property | Default | Description |
 |---|---|---|
-| `EagerPushGossipBroadcast.Channel.Address` | from `myself` | TCP bind address. Defaults to the address of the `Host` passed to the constructor. |
-| `EagerPushGossipBroadcast.Channel.Port`    | from `myself` | TCP bind port. |
+| `EagerPushGossipBroadcast.Channel.Address` | see description | TCP bind address of the protocol's own channel. Falls back, in order, to the Babel-wide `babel.address`, the IPv4 address of `babel.interface`, and finally the address of the `Host` passed to the constructor. Ignored in `shared` mode. |
+| `EagerPushGossipBroadcast.Channel.Port`    | mode-dependent | TCP bind port of the protocol's own channel. When unset: in `offset` mode it is the node's *base* (membership) port + `PortOffset`, the base coming from `myself.port` or the Babel-wide `babel.port`; in other modes it defaults to `myself.port`. `babel.port` denotes the membership protocol's port, so it is never used as a bind port directly (the gossip channel would collide with the membership channel) — its only role is as the base the offset is added to. In `offset` mode an explicit value that contradicts the offset contract fails fast at construction. Ignored in `shared` mode. |
 | `EagerPushGossipBroadcast.Fanout`          | `4` | Number of random peers each broadcast is forwarded to. |
 | `EagerPushGossipBroadcast.DeliveredTimeout`| `600000` ms | How long a delivered message ID is remembered in the dedup cache. |
 | `EagerPushGossipBroadcast.SupportAntiEntropy` | `false` | When `true`, fires `IdentifiableMessageNotification` on delivery (consumed by `broadcast-antientropy`) and handles `MissingIdentifiableMessageRequest` (recovers messages anti-entropy detects as missing on a peer). |
-| `EagerPushGossipBroadcast.LocalSupport`    | `false` | When `true`, neighbour port is computed as `peer.port + 1` instead of `this.networkPort` — used in local single-host test deployments where every node is on the same loopback IP. |
+| `EagerPushGossipBroadcast.PeerAddressResolution` | `offset` | How a peer's gossip endpoint is derived from its membership endpoint: `offset`, `fixed` or `shared`. See [Peer address resolution](#peer-address-resolution--channel-modes). |
+| `EagerPushGossipBroadcast.PortOffset`      | `1` | `offset` mode only — port distance between each process's membership channel and its gossip channel. |
+| `EagerPushGossipBroadcast.PeerPort`        | own bind port | `fixed` mode only — the single uniform port every peer's gossip channel listens at. |
+| `EagerPushGossipBroadcast.SharedChannelProtocol` | unset | `shared` mode only — numeric protocol ID whose `ChannelAvailableNotification` to attach to. When unset, the first announced channel is adopted. |
+| `EagerPushGossipBroadcast.LocalSupport`    | — | **Deprecated.** Honoured only when `PeerAddressResolution` is absent: `true` ≙ `offset` (offset 1), `false` ≙ `fixed`; both keep the historical binding semantics (channel binds directly to `myself.port`). Logs a deprecation warning. |
+
+## Peer address resolution & channel modes
+
+The membership protocol identifies peers by the endpoint of *its* channel; this
+protocol talks to peers on the endpoint of the *gossip* channel. Since the
+membership layer is (deliberately) unaware of the gossip protocol's port, the
+gossip endpoint of a peer must be derived. All internal state holds
+gossip-channel identities; membership identities are translated exactly once,
+on entry (`NeighborUp`/`NeighborDown` and anti-entropy recovery requests). The
+translation is governed by `EagerPushGossipBroadcast.PeerAddressResolution`,
+which **must be configured uniformly across the deployment**:
+
+- **`offset`** (default) — the workspace's port contract, made explicit: every
+  process binds its gossip channel at `membership port + PortOffset` (default
+  `+1`), so peers are resolved by adding the same offset. The contract is
+  self-consistent by construction: the node's own bind port is derived from the
+  `myself` (membership) identity plus the offset, and a contradictory explicit
+  `Channel.Port` is rejected at construction. Works for distributed and
+  single-host deployments alike.
+- **`fixed`** — every process binds its gossip channel at one uniform,
+  explicitly known port (`PeerPort`). For homogeneous deployments where
+  membership ports may vary but the gossip port is identical on every node.
+- **`shared`** — no own channel. The protocol attaches to the channel announced
+  by another protocol (typically the membership protocol) via
+  `ChannelAvailableNotification`; both identity spaces coincide and no
+  translation happens. Fewer connections and no port contract, at the cost of
+  head-of-line blocking on the shared TCP connections — prefer it when
+  broadcast payloads are small. Broadcast requests issued before the channel is
+  announced are queued and flushed on attach; on the shared channel the
+  protocol only mirrors connection events and never opens/closes connections
+  against the owner's lifecycle (it never calls `closeConnection`, and
+  `openConnection` only for neighbours not already connected).
+
+When this protocol owns its channel it announces it via
+`ChannelAvailableNotification` in `init()`, so other protocols may share *its*
+channel in turn.
 
 ## How application protocols plug in
 
@@ -117,3 +157,14 @@ This is a ParadigmShift evolution of the original protocol. Headline changes:
 - Public mutable parameter fields demoted to `private final` with getters
   where needed.
 - Public javadoc on every public type and method.
+- **`LocalSupport` replaced by `PeerAddressResolution` (0.3.0).** The boolean
+  never expressed "local testing" — it selected which port convention to
+  assume for peers (`true`: `peer.port + 1`; `false`: every peer at *this*
+  node's own port). It is now an explicit three-way strategy (`offset` /
+  `fixed` / `shared`, see above) with a declared offset, an explicit uniform
+  peer port, fail-fast self-consistency validation, and a new shared-channel
+  mode. `LocalSupport` is still honoured (with a warning) when the new key is
+  absent. **Note:** the out-of-the-box default changed from the old
+  `LocalSupport=false` behaviour to `offset` — configurations that set
+  neither key and relied on the implicit "all peers at my port" assumption
+  must now set `PeerAddressResolution=fixed`.
