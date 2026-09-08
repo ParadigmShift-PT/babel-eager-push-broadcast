@@ -31,3 +31,6 @@ replay_pid*
 /target/
 /bin/
 */.DS_Store/
+
+# Local per-project guidance (not committed)
+CLAUDE.md
